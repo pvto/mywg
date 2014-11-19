@@ -1,369 +1,369 @@
 
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<title>Solita dev* day – Data Visualization with Three.js + WebGL</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<style>
-			body {
-				color: #ffffff;
-				background-color: #a0a0a0;
-				margin: 0px;
-				overflow: hidden;
-			}
+    <head>
+        <title>Solita dev* day – Data Visualization with Three.js + WebGL</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <style>
+            body {
+                color: #ffffff;
+                background-color: #a0a0a0;
+                margin: 0px;
+                overflow: hidden;
+            }
 
-			#info {
-				position: absolute;
-				top: 60px; width: 100%;
-				padding: 5px;
-			}
-		</style>
-	</head>
-	<body>
+            #info {
+                position: absolute;
+                top: 60px; width: 100%;
+                padding: 5px;
+            }
+        </style>
+    </head>
+    <body>
 
-		<div id="container"></div>
-		<div id="info">Solita-dev*' day 2014</div>
+        <div id="container"></div>
+        <div id="info">Solita-dev*' day 2014</div>
 
-		<script src="js/libs/three.js"></script>
-		<script src="js/libs/lodash.js"></script>
-		<script src="js/MYWG.js"></script>
-		<script src="js/libs/Detector.js"></script>
-		<script src="js/libs/stats.min.js"></script>
-		<script src="fonts/helvetiker_bold.typeface.js"></script>
+        <script src="js/libs/three.js"></script>
+        <script src="js/libs/lodash.js"></script>
+        <script src="js/MYWG.js"></script>
+        <script src="js/libs/Detector.js"></script>
+        <script src="js/libs/stats.min.js"></script>
+        <script src="fonts/helvetiker_bold.typeface.js"></script>
 
 
 <!-- some unneeded shaders; interesting things after these -->
-		<script id="fragmentShader" type="x-shader/x-fragment">
+        <script id="fragmentShader" type="x-shader/x-fragment">
 
-			uniform float time;
-			uniform vec2 resolution;
+            uniform float time;
+            uniform vec2 resolution;
 
-			uniform float fogDensity;
-			uniform vec3 fogColor;
+            uniform float fogDensity;
+            uniform vec3 fogColor;
 
-			uniform sampler2D texture1;
-			uniform sampler2D texture2;
+            uniform sampler2D texture1;
+            uniform sampler2D texture2;
 
-			varying vec2 vUv;
+            varying vec2 vUv;
 
-			void main( void ) {
+            void main( void ) {
 
-				vec2 position = -1.0 + 2.0 * vUv;
+                vec2 position = -1.0 + 2.0 * vUv;
 
-				vec4 noise = texture2D( texture1, vUv );
-				vec2 T1 = vUv + vec2( 1.5, -1.5 ) * time  *0.02;
-				vec2 T2 = vUv + vec2( -0.5, 2.0 ) * time * 0.99;
+                vec4 noise = texture2D( texture1, vUv );
+                vec2 T1 = vUv + vec2( 1.5, -1.5 ) * time  *0.02;
+                vec2 T2 = vUv + vec2( -0.5, 2.0 ) * time * 0.99;
 
-				T1.x += noise.x * 2.0;
-				T1.y += noise.y * 2.0;
-				T2.x -= noise.y * 0.1;
-				T2.y += noise.z * 0.99;
+                T1.x += noise.x * 2.0;
+                T1.y += noise.y * 2.0;
+                T2.x -= noise.y * 0.1;
+                T2.y += noise.z * 0.99;
 
-				float p = texture2D( texture1, T1 * 2.0 ).a;
+                float p = texture2D( texture1, T1 * 2.0 ).a;
 
-				vec4 color = texture2D( texture2, T2 * 2.0 );
-				vec4 temp = color * ( vec4( p, p, p, p ) * 2.0 ) + ( color * color - 0.1 );
+                vec4 color = texture2D( texture2, T2 * 2.0 );
+                vec4 temp = color * ( vec4( p, p, p, p ) * 2.0 ) + ( color * color - 0.1 );
 
-				if( temp.r > 1.0 ){ temp.bg += clamp( temp.r - 2.0, 0.0, 100.0 ); }
-				if( temp.g > 1.0 ){ temp.rb += temp.g - 1.0; }
-				if( temp.b > 1.0 ){ temp.rg += temp.b - 1.0; }
+                if( temp.r > 1.0 ){ temp.bg += clamp( temp.r - 2.0, 0.0, 100.0 ); }
+                if( temp.g > 1.0 ){ temp.rb += temp.g - 1.0; }
+                if( temp.b > 1.0 ){ temp.rg += temp.b - 1.0; }
 
-				gl_FragColor = temp;
+                gl_FragColor = temp;
 
-				float depth = gl_FragCoord.z / gl_FragCoord.w;
-				const float LOG2 = 1.442695;
-				float fogFactor = exp2( - fogDensity * fogDensity * depth * depth * LOG2 );
-				fogFactor = 1.0 - clamp( fogFactor, 0.0, 1.0 );
+                float depth = gl_FragCoord.z / gl_FragCoord.w;
+                const float LOG2 = 1.442695;
+                float fogFactor = exp2( - fogDensity * fogDensity * depth * depth * LOG2 );
+                fogFactor = 1.0 - clamp( fogFactor, 0.0, 1.0 );
 
-				gl_FragColor = mix( gl_FragColor, vec4( fogColor, gl_FragColor.w ), fogFactor );
+                gl_FragColor = mix( gl_FragColor, vec4( fogColor, gl_FragColor.w ), fogFactor );
 
-			}
+            }
 
-		</script>
+        </script>
 
-		<script id="vertexShader" type="x-shader/x-vertex">
+        <script id="vertexShader" type="x-shader/x-vertex">
 
-			uniform vec2 uvScale;
-			varying vec2 vUv;
+            uniform vec2 uvScale;
+            varying vec2 vUv;
 
-			void main()
-			{
+            void main()
+            {
 
-				vUv = uvScale * uv;
-				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-				gl_Position = projectionMatrix * mvPosition;
+                vUv = uvScale * uv;
+                vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+                gl_Position = projectionMatrix * mvPosition;
 
-			}
+            }
 
-		</script>
-
-
+        </script>
 
 
 
-		<script type="text/javascript">
-			'use strict';
-			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
-
-			var container, stats;
-
-			var camera, renderer;
-			var sceneCtxs;
-			var currentScene = 0;
-
-			var pieChart;
-
-			var clock = new THREE.Clock();
-
-			var mouseX = 0, mouseY = 0,
-				zoomX = 0, zoomY = 0;
-
-			var windowHalfX = window.innerWidth / 2;
-			var windowHalfY = window.innerHeight / 2;
-
-			document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-			document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-			document.addEventListener( 'mouseup', onDocumentMouseUp, false );
-
-			init();
-			animate();
-
-			function init() {
-
-				container = document.getElementById( 'container' );
-
-				camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.1, 10 );
-				camera.position.z = 1;
-
-				var pie = createPieScene(),
-					hist = createHistogramScene(),
-					scat = createScatterScene(),
-					bar3 = createBar3Scene(),
-					lava = createLavaScene()
-					;
-				sceneCtxs = [ 
-					{ scene: bar3.scene, uniforms: bar3.uniforms, callback: updateBar3Scene }, 
-					{ scene: pie.scene, uniforms: pie.uniforms, callback: updatePieScene }, 
-					{ scene: hist.scene, uniforms: hist.uniforms, callback: updatePieScene },
-					{ scene: scat.scene, uniforms: scat.uniforms, callback: updateScene1 },
-					{ scene: lava.scene, uniforms: lava.uniforms, callback: updateScene1 }
-				];
-
-				renderer = new THREE.WebGLRenderer();
-
-				renderer.shadowMapEnabled = true;
-				renderer.shadowMapType = THREE.PCFShadowMap;
-				container.appendChild( renderer.domElement );
-
-				stats = new Stats();
-				stats.domElement.style.position = 'absolute';
-				stats.domElement.style.top = '0px';
-				container.appendChild( stats.domElement );
-
-				onWindowResize();
-
-				window.addEventListener( 'resize', onWindowResize, false );
-
-			}
-
-			function createSpotlight() {
-				var light =	new THREE.SpotLight( 0xffffff, 1, 0, Math.PI / 2, 1 );	//spotlight+receiving plane for shadows
-				light.position.set( 0, 0, 3 );
-				light.castShadow = true;
-				light.shadowCameraNear = 2;
-				light.shadowCameraFar = 4;
-				light.shadowCameraFov = 30;
-				light.shadowBias = 0.0001;
-				light.shadowDarkness = 0.5;
-				light.shadowMapWidth = 1024;
-				light.shadowMapHeight = 1024;
-				return light;
-			}
-
-			function createPieScene() {
-				var data = [
-					{ share: 9, lift: 0.1, color: 0x202040, label: "Piirakkakaavio" },
-					{ share: 29, lift: 0.01, color: 0xe0a0a0, label: "Hajontakaavio" },
-					{ share: 15, lift: 0.01, color: 0xa0e0a0, label: "Histogrammi" },
-					{ share: 47, lift: 0.01, color: 0xa0a0e0, label: "pieLift = sin( phase ^ 0.75 * PI ) / weight( piece )" }
-				];
-				data = _.map( data, function( d ) { d['data'] = data;  return d; });
-
-				var scene = new THREE.Scene();
-				var group = new THREE.Object3D();
-				scene.add(group);
-
-				var textMaterial = new THREE.MeshLambertMaterial( { color: 0x000001 });
-				var hh = [
-					{ text: "Tuunaa oma dev*", y: 0.3+0.15, size: 0.035 },
-					{ text: "WebGL-infografiikka", y: 0.3+0, size: 0.07 },
-					{ text: "Paavo Toivanen", y: 0.3-0.8, size: 0.035 }
-				];
-				for( var i = 0; i < hh.length; i ++ ) {
-					var p = hh[ i ];
-					var text = MYWG.makeHeader( p.text, { size: p.size }, textMaterial );
-					text.position.y += p.y;
-					group.add( text );
-				}
-
-				var light = createSpotlight();
-				scene.add( light );
-
-				var pieParams = {
-					data: data,
-					r: 0.2,
-					startAngle: -Math.PI / 8,
-					extrudeSettings: {
-						amount: 0.05, 
-						steps: 4,
-						bevelSegments: 7,
-						bevelSize: 0.02,
-						bevelThickness: 0.04,
-						bevelEnabled: true 
-					}
-				};
-				pieChart = MYWG.makePieChart( function(d) { return d.share; }, 
-					data, pieParams );
-				group.add( pieChart );
-
-				var geometry = new THREE.PlaneGeometry( 8, 6, 32, 32 );
-				var material = new THREE.MeshLambertMaterial( { color: 0xf0f0f0, side: THREE.DoubleSide } );
-				var plane = new THREE.Mesh( geometry, material );
-				plane.position.z = -0;
-				scene.add( plane );
-
-				return { scene: scene };
-			}
 
 
-			function createScatterScene() {
+        <script type="text/javascript">
+            'use strict';
+            if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-				var data = [
-					{ t: 0.0, val: 0.1, color: 0xff0000 },
-					{ t: 0.1, val: 0.2, color: 0xff0000 },
-					{ t: 0.2, val: 0.3, color: 0xff0000 },
-					{ t: 0.3, val: 0.4, color: 0xff0000 },
-					{ t: 0.4, val: 0.4, color: 0xff0000 },
-					{ t: 0.5, val: 0.5, color: 0xff0000 }
-				];
-				var dataCount = 1000;
+            var container, stats;
 
-				var rndc = function(extent) { return Math.floor( Math.random() * extent + ( 255 - extent ) ); }
-				for( var i = data.length; i < dataCount; i ++ ) {
-					var val = i / dataCount + Math.random() * 0.2;
-					data.push( {
-						t: i / dataCount + Math.random(), 
-						val: val,
-						color: rndc( 128 * val ) * 256 * 256 + rndc( 128 ) * 256 + rndc( 128 )
-					} );
-				}
+            var camera, renderer;
+            var sceneCtxs;
+            var currentScene = 0;
 
-				var scene = new THREE.Scene();
+            var pieChart;
 
-				var light = createSpotlight();
-				scene.add( light );
+            var clock = new THREE.Clock();
 
-				var bsize = 0.005;
-				var geometry = new THREE.BoxGeometry( bsize, bsize, bsize );
+            var mouseX = 0, mouseY = 0,
+                zoomX = 0, zoomY = 0;
+
+            var windowHalfX = window.innerWidth / 2;
+            var windowHalfY = window.innerHeight / 2;
+
+            document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+            document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+            document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+
+            init();
+            animate();
+
+            function init() {
+
+                container = document.getElementById( 'container' );
+
+                camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.1, 10 );
+                camera.position.z = 1;
+
+                var pie = createPieScene(),
+                    hist = createHistogramScene(),
+                    scat = createScatterScene(),
+                    bar3 = createBar3Scene(),
+                    lava = createLavaScene()
+                    ;
+                sceneCtxs = [ 
+                    { scene: bar3.scene, uniforms: bar3.uniforms, callback: updateBar3Scene }, 
+                    { scene: pie.scene, uniforms: pie.uniforms, callback: updatePieScene }, 
+                    { scene: hist.scene, uniforms: hist.uniforms, callback: updatePieScene },
+                    { scene: scat.scene, uniforms: scat.uniforms, callback: updateScene1 },
+                    { scene: lava.scene, uniforms: lava.uniforms, callback: updateScene1 }
+                ];
+
+                renderer = new THREE.WebGLRenderer();
+
+                renderer.shadowMapEnabled = true;
+                renderer.shadowMapType = THREE.PCFShadowMap;
+                container.appendChild( renderer.domElement );
+
+                stats = new Stats();
+                stats.domElement.style.position = 'absolute';
+                stats.domElement.style.top = '0px';
+                container.appendChild( stats.domElement );
+
+                onWindowResize();
+
+                window.addEventListener( 'resize', onWindowResize, false );
+
+            }
+
+            function createSpotlight() {
+                var light =    new THREE.SpotLight( 0xffffff, 1, 0, Math.PI / 2, 1 );    //spotlight+receiving plane for shadows
+                light.position.set( 0, 0, 3 );
+                light.castShadow = true;
+                light.shadowCameraNear = 2;
+                light.shadowCameraFar = 4;
+                light.shadowCameraFov = 30;
+                light.shadowBias = 0.0001;
+                light.shadowDarkness = 0.5;
+                light.shadowMapWidth = 1024;
+                light.shadowMapHeight = 1024;
+                return light;
+            }
+
+            function createPieScene() {
+                var data = [
+                    { share: 9, lift: 0.1, color: 0x202040, label: "Piirakkakaavio" },
+                    { share: 29, lift: 0.01, color: 0xe0a0a0, label: "Hajontakaavio" },
+                    { share: 15, lift: 0.01, color: 0xa0e0a0, label: "Histogrammi" },
+                    { share: 47, lift: 0.01, color: 0xa0a0e0, label: "pieLift = sin( phase ^ 0.75 * PI ) / weight( piece )" }
+                ];
+                data = _.map( data, function( d ) { d['data'] = data;  return d; });
+
+                var scene = new THREE.Scene();
+                var group = new THREE.Object3D();
+                scene.add(group);
+
+                var textMaterial = new THREE.MeshLambertMaterial( { color: 0x000001 });
+                var hh = [
+                    { text: "Tuunaa oma dev*", y: 0.3+0.15, size: 0.035 },
+                    { text: "WebGL-infografiikka", y: 0.3+0, size: 0.07 },
+                    { text: "Paavo Toivanen", y: 0.3-0.8, size: 0.035 }
+                ];
+                for( var i = 0; i < hh.length; i ++ ) {
+                    var p = hh[ i ];
+                    var text = MYWG.makeHeader( p.text, { size: p.size }, textMaterial );
+                    text.position.y += p.y;
+                    group.add( text );
+                }
+
+                var light = createSpotlight();
+                scene.add( light );
+
+                var pieParams = {
+                    data: data,
+                    r: 0.2,
+                    startAngle: -Math.PI / 8,
+                    extrudeSettings: {
+                        amount: 0.05, 
+                        steps: 4,
+                        bevelSegments: 7,
+                        bevelSize: 0.02,
+                        bevelThickness: 0.04,
+                        bevelEnabled: true 
+                    }
+                };
+                pieChart = MYWG.makePieChart( function(d) { return d.share; }, 
+                    data, pieParams );
+                group.add( pieChart );
+
+                var geometry = new THREE.PlaneGeometry( 8, 6, 32, 32 );
+                var material = new THREE.MeshLambertMaterial( { color: 0xf0f0f0, side: THREE.DoubleSide } );
+                var plane = new THREE.Mesh( geometry, material );
+                plane.position.z = -0;
+                scene.add( plane );
+
+                return { scene: scene };
+            }
+
+
+            function createScatterScene() {
+
+                var data = [
+                    { t: 0.0, val: 0.1, color: 0xff0000 },
+                    { t: 0.1, val: 0.2, color: 0xff0000 },
+                    { t: 0.2, val: 0.3, color: 0xff0000 },
+                    { t: 0.3, val: 0.4, color: 0xff0000 },
+                    { t: 0.4, val: 0.4, color: 0xff0000 },
+                    { t: 0.5, val: 0.5, color: 0xff0000 }
+                ];
+                var dataCount = 1000;
+
+                var rndc = function(extent) { return Math.floor( Math.random() * extent + ( 255 - extent ) ); }
+                for( var i = data.length; i < dataCount; i ++ ) {
+                    var val = i / dataCount + Math.random() * 0.2;
+                    data.push( {
+                        t: i / dataCount + Math.random(), 
+                        val: val,
+                        color: rndc( 128 * val ) * 256 * 256 + rndc( 128 ) * 256 + rndc( 128 )
+                    } );
+                }
+
+                var scene = new THREE.Scene();
+
+                var light = createSpotlight();
+                scene.add( light );
+
+                var bsize = 0.005;
+                var geometry = new THREE.BoxGeometry( bsize, bsize, bsize );
 
                 var group = new THREE.Object3D();
-				group.position.set( 0, 0, 0 );
-				scene.add( group );
+                group.position.set( 0, 0, 0 );
+                scene.add( group );
 
 
-				var margin = 0.1;
-				var xRange = MYWG.range( data, function(x) { return x.t; } );
-				var yRange = MYWG.range( data, function(x) { return x.val; } );
+                var margin = 0.1;
+                var xRange = MYWG.range( data, function(x) { return x.t; } );
+                var yRange = MYWG.range( data, function(x) { return x.val; } );
 
-				for( var i = 0; i < data.length; i ++ ) {
-					var d = data[i];
-					var material = new THREE.MeshPhongMaterial( { ambient: 0x20a0a0, color: d.color, specular: 0x555555, shininess: 10 } );
-					var mesh = new THREE.Mesh( geometry, material );
-					mesh.position.x = xRange.normx(d.t, margin);
-					mesh.position.y = yRange.normx(d.val, margin);
-					mesh.position.z = 0;
-					mesh.castShadow = false;
-					mesh.MYWG_model = d;
-					group.add( mesh );
-				}
-
-
-				// bg "screen" plane
-				var geometry = new THREE.PlaneGeometry( 2, 2, 32, 32 );
-				var material = new THREE.MeshLambertMaterial( { color: 0xf0f0f0, side: THREE.DoubleSide } );
-				var plane = new THREE.Mesh( geometry, material );
-				plane.position.z = -0.1;
-				plane.castShadow = false;
-				plane.receiveShadow = false;
-				scene.add( plane );
+                for( var i = 0; i < data.length; i ++ ) {
+                    var d = data[i];
+                    var material = new THREE.MeshPhongMaterial( { ambient: 0x20a0a0, color: d.color, specular: 0x555555, shininess: 10 } );
+                    var mesh = new THREE.Mesh( geometry, material );
+                    mesh.position.x = xRange.normx(d.t, margin);
+                    mesh.position.y = yRange.normx(d.val, margin);
+                    mesh.position.z = 0;
+                    mesh.castShadow = false;
+                    mesh.MYWG_model = d;
+                    group.add( mesh );
+                }
 
 
-				var lineMaterial = new THREE.LineBasicMaterial( { color: 0x808080, opacity: 0.5 } );
-				_.forEach( MYWG.CoordinateUtil.createXyCoordinateLines(xRange, yRange, margin, 1, 1, lineMaterial), function(line) {
-						group.add(line);
-					}
-				);
+                // bg "screen" plane
+                var geometry = new THREE.PlaneGeometry( 2, 2, 32, 32 );
+                var material = new THREE.MeshLambertMaterial( { color: 0xf0f0f0, side: THREE.DoubleSide } );
+                var plane = new THREE.Mesh( geometry, material );
+                plane.position.z = -0.1;
+                plane.castShadow = false;
+                plane.receiveShadow = false;
+                scene.add( plane );
 
-				return { scene: scene };
-			}
+
+                var lineMaterial = new THREE.LineBasicMaterial( { color: 0x808080, opacity: 0.5 } );
+                _.forEach( MYWG.CoordinateUtil.createXyCoordinateLines(xRange, yRange, margin, 1, 1, lineMaterial), function(line) {
+                        group.add(line);
+                    }
+                );
+
+                return { scene: scene };
+            }
 
 
-			function createHistogramScene() {
+            function createHistogramScene() {
 
-				var data1 = [
-					{ date: "2014-01-01", c: 120.1 },
-					{ date: "2014-02-01", c: 90.3 },
-					{ date: "2014-03-01", c: 111.0 },
-					{ date: "2014-04-01", c: 133.1 },
-					{ date: "2014-05-01", c: 141.1 },
-					{ date: "2014-06-01", c: 120.8 },
-					{ date: "2014-07-01", c: 122.5 },
-					{ date: "2014-08-01", c: 84.7 },
-					{ date: "2014-09-01", c: 101.9 },
-					{ date: "2014-10-01", c: 98.9 },
-					{ date: "2014-11-01", c: 120.0 },
-					{ date: "2014-12-01", c: 105.5 },
-				];
+                var data1 = [
+                    { date: "2014-01-01", c: 120.1 },
+                    { date: "2014-02-01", c: 90.3 },
+                    { date: "2014-03-01", c: 111.0 },
+                    { date: "2014-04-01", c: 133.1 },
+                    { date: "2014-05-01", c: 141.1 },
+                    { date: "2014-06-01", c: 120.8 },
+                    { date: "2014-07-01", c: 122.5 },
+                    { date: "2014-08-01", c: 84.7 },
+                    { date: "2014-09-01", c: 101.9 },
+                    { date: "2014-10-01", c: 98.9 },
+                    { date: "2014-11-01", c: 120.0 },
+                    { date: "2014-12-01", c: 105.5 },
+                ];
                 data1 = _.map( data1, function( d ) {
-                	d.x = new Number( d.date.substring( 5, 7 ) );
-                	return d;
+                    d.x = new Number( d.date.substring( 5, 7 ) );
+                    return d;
                 });
 
-				var data2 = [
-					{ x: 1, c: 0.134 },
-					{ x: 2, c: 0.111 },
-					{ x: 3, c: 0.142 },
-					{ x: 4, c: 0.030 },
-					{ x: 5, c: 0.165 },
-					{ x: 6, c: 0.153 },
-					{ x: 7, c: 0.113 },
-					{ x: 8, c: 0.113 },
-				];
+                var data2 = [
+                    { x: 1, c: 0.134 },
+                    { x: 2, c: 0.111 },
+                    { x: 3, c: 0.142 },
+                    { x: 4, c: 0.030 },
+                    { x: 5, c: 0.165 },
+                    { x: 6, c: 0.153 },
+                    { x: 7, c: 0.113 },
+                    { x: 8, c: 0.113 },
+                ];
 
-				var data3 = [
-					{ x: 1, c: 0.134 },
-					{ x: 3, c: 0.111 },
-					{ x: 5, c: 0.142 },
-					{ x: 6, c: 0.030 },
-					{ x: 8, c: 0.165 },
-					{ x: 10, c: 0.153 },
-					{ x: 11, c: 0.113 },
-					{ x: 13, c: 0.110 },
-					{ x: 15, c: 0.103 },
-					{ x: 18, c: 0.083 },
-					{ x: 21, c: 0.101 },
-				];
+                var data3 = [
+                    { x: 1, c: 0.134 },
+                    { x: 3, c: 0.111 },
+                    { x: 5, c: 0.142 },
+                    { x: 6, c: 0.030 },
+                    { x: 8, c: 0.165 },
+                    { x: 10, c: 0.153 },
+                    { x: 11, c: 0.113 },
+                    { x: 13, c: 0.110 },
+                    { x: 15, c: 0.103 },
+                    { x: 18, c: 0.083 },
+                    { x: 21, c: 0.101 },
+                ];
 
-				var dati = [ data1, data2, data3 ];
-				var materials = [
-					new THREE.LineBasicMaterial( { color: 0x00ff40 } ),
-					new THREE.LineBasicMaterial( { color: 0x002040, linewidth: 2 } ),
-					new THREE.LineDashedMaterial( { color: 0x0080b0, linewidth: 3, gapSize: 1, dashSize: 1 } )
-				];
+                var dati = [ data1, data2, data3 ];
+                var materials = [
+                    new THREE.LineBasicMaterial( { color: 0x00ff40 } ),
+                    new THREE.LineBasicMaterial( { color: 0x002040, linewidth: 2 } ),
+                    new THREE.LineDashedMaterial( { color: 0x0080b0, linewidth: 3, gapSize: 1, dashSize: 1 } )
+                ];
 
 
-				var scene = new THREE.Scene();
+                var scene = new THREE.Scene();
 
                 var directionalLight = new THREE.DirectionalLight( 0xffffff, 3 );
                 directionalLight.position.set( 0, 3, 3 );
@@ -371,270 +371,270 @@
                 scene.add( directionalLight );
 
 
-				for( var di = 0; di < dati.length; di ++ ) {
+                for( var di = 0; di < dati.length; di ++ ) {
 
-					var data = dati[ di ];
-					var material = materials[ di ];
-					var margin = 0.1 + Math.log10( Math.pow( dati.length, 0.5 ) );
+                    var data = dati[ di ];
+                    var material = materials[ di ];
+                    var margin = 0.1 + Math.log10( Math.pow( dati.length, 0.5 ) );
 
-	                var group = new THREE.Object3D();
-					group.position.set( -0.5 + di / ( dati.length - 1 ), 0, 0 );
-					scene.add( group );
+                    var group = new THREE.Object3D();
+                    group.position.set( -0.5 + di / ( dati.length - 1 ), 0, 0 );
+                    scene.add( group );
 
-					var histogram = MYWG.makeHistogram( 
-						function(data) { return data.x; },
-						function(data) { return data.c; },
-						{ data: data, margin: margin, material: material } );
-					group.add( histogram );
-					
-				}
-				// bg "screen" plane
-				var geometry = new THREE.PlaneGeometry( 4, 2, 32, 32 );
-				var material = new THREE.MeshLambertMaterial( { color: 0xf0f0f0, side: THREE.DoubleSide } );
-				var plane = new THREE.Mesh( geometry, material );
-				plane.position.z = -0.1;
-				plane.castShadow = false;
-				plane.receiveShadow = true;
-				scene.add( plane );
+                    var histogram = MYWG.makeHistogram( 
+                        function(data) { return data.x; },
+                        function(data) { return data.c; },
+                        { data: data, margin: margin, material: material } );
+                    group.add( histogram );
+                    
+                }
+                // bg "screen" plane
+                var geometry = new THREE.PlaneGeometry( 4, 2, 32, 32 );
+                var material = new THREE.MeshLambertMaterial( { color: 0xf0f0f0, side: THREE.DoubleSide } );
+                var plane = new THREE.Mesh( geometry, material );
+                plane.position.z = -0.1;
+                plane.castShadow = false;
+                plane.receiveShadow = true;
+                scene.add( plane );
 
-				var text = MYWG.makeHeader( "github.com/pvto/mywg", { size: 0.035 }, 
-					new THREE.MeshLambertMaterial( { color: 0x000000 } ) );
-				text.position.y += 0.5;
-				scene.add( text );
+                var text = MYWG.makeHeader( "github.com/pvto/mywg", { size: 0.035 }, 
+                    new THREE.MeshLambertMaterial( { color: 0x000000 } ) );
+                text.position.y += 0.5;
+                scene.add( text );
 
-				return { scene: scene };
-			}
+                return { scene: scene };
+            }
 
-			function createBar3Scene() {
+            function createBar3Scene() {
 
-				var data = [
-					{ x: 1, z: 1, h: 0 },	// start at zero for normalizing sizes
-				];
-				var datasize = 256;
-				for( var i = data.length; i < datasize; i++ ) {
-					data.push( { 
-						x: i % Math.sqrt( datasize ),
-						z: i / Math.sqrt( datasize ),
-						h: Math.random() * 8
-					} );
-				}
+                var data = [
+                    { x: 1, z: 1, h: 0 },    // start at zero for normalizing sizes
+                ];
+                var datasize = 256;
+                for( var i = data.length; i < datasize; i++ ) {
+                    data.push( { 
+                        x: i % Math.sqrt( datasize ),
+                        z: i / Math.sqrt( datasize ),
+                        h: Math.random() * 8
+                    } );
+                }
 
-				var margin = 0.3;
-				var X = function( d ) { return d.x; },
-					Z = function( d ) { return d.z; },
-					H = function( d ) { return d.h; }
-					;
-				var xrange = MYWG.range( data, X ),
-				    zrange = MYWG.range( data, Z ),
-				    hrange = MYWG.range( data, H )
-				    ;
+                var margin = 0.3;
+                var X = function( d ) { return d.x; },
+                    Z = function( d ) { return d.z; },
+                    H = function( d ) { return d.h; }
+                    ;
+                var xrange = MYWG.range( data, X ),
+                    zrange = MYWG.range( data, Z ),
+                    hrange = MYWG.range( data, H )
+                    ;
 
-				var hmax = _.max( _.map( data, H ) );
-				var ccomp = function( ratio ) { return Math.floor( 256 * ratio ); }
+                var hmax = _.max( _.map( data, H ) );
+                var ccomp = function( ratio ) { return Math.floor( 256 * ratio ); }
 
-				var scene = new THREE.Scene();
-				var group = new THREE.Object3D();
-				scene.add( group );
-				group.rotation.x = Math.PI / 4;
+                var scene = new THREE.Scene();
+                var group = new THREE.Object3D();
+                scene.add( group );
+                group.rotation.x = Math.PI / 4;
 
-				for( var i = 0; i < data.length; i ++ ) {
+                for( var i = 0; i < data.length; i ++ ) {
 
-					var d = data[ i ];
-					var dx = xrange.normx( X( d ), margin ),
-						dz = zrange.normx( Z( d ), margin ),
-						h = Math.abs( hrange.normx( H( d ), margin ) )
-						;
-					var boxsize = ( 1 - margin * 2 ) / Math.max( 1 + xrange.magnitude, 1 + zrange.magnitude );
-					var cylindersize = boxsize / Math.sqrt( 2 );
-					var geometry = new THREE.CylinderGeometry ( cylindersize, cylindersize, h, 12, 8, false );
+                    var d = data[ i ];
+                    var dx = xrange.normx( X( d ), margin ),
+                        dz = zrange.normx( Z( d ), margin ),
+                        h = Math.abs( hrange.normx( H( d ), margin ) )
+                        ;
+                    var boxsize = ( 1 - margin * 2 ) / Math.max( 1 + xrange.magnitude, 1 + zrange.magnitude );
+                    var cylindersize = boxsize / Math.sqrt( 2 );
+                    var geometry = new THREE.CylinderGeometry ( cylindersize, cylindersize, h, 12, 8, false );
 
-					var material = new THREE.MeshLambertMaterial( { color: ccomp( H( d ) / hmax ) } );
-						//new THREE.MeshPhongMaterial( { ambient: 0x20a0a0, 
-						//color: ccomp( sh1 / hmax), specular: 0x555555, shininess: 10 } );
-					var mesh = new THREE.Mesh( geometry, material );
-					mesh.position.x = dx;
-					mesh.position.y = 0 + ( h / 2 );
-					mesh.position.z = dz;
+                    var material = new THREE.MeshLambertMaterial( { color: ccomp( H( d ) / hmax ) } );
+                        //new THREE.MeshPhongMaterial( { ambient: 0x20a0a0, 
+                        //color: ccomp( sh1 / hmax), specular: 0x555555, shininess: 10 } );
+                    var mesh = new THREE.Mesh( geometry, material );
+                    mesh.position.x = dx;
+                    mesh.position.y = 0 + ( h / 2 );
+                    mesh.position.z = dz;
 
-					d.targetZ = dz;
-					MYWG.wrap( mesh, d );
+                    d.targetZ = dz;
+                    MYWG.wrap( mesh, d );
 
-					group.add( mesh );
+                    group.add( mesh );
 
-				}
+                }
 
-				// bg "screen" plane
-				var geometry = new THREE.PlaneGeometry( 8, 8, 32, 32 );
-				var material = new THREE.MeshLambertMaterial( { color: 0xf0f0f0, side: THREE.DoubleSide } );
-				var plane = new THREE.Mesh( geometry, material );
-				plane.position.z = -1.1;
-				plane.castShadow = false;
-				plane.receiveShadow = true;
-				scene.add( plane );
+                // bg "screen" plane
+                var geometry = new THREE.PlaneGeometry( 8, 8, 32, 32 );
+                var material = new THREE.MeshLambertMaterial( { color: 0xf0f0f0, side: THREE.DoubleSide } );
+                var plane = new THREE.Mesh( geometry, material );
+                plane.position.z = -1.1;
+                plane.castShadow = false;
+                plane.receiveShadow = true;
+                scene.add( plane );
 
                 scene.add( createSpotlight() );
 
-				return { scene: scene };
-			}
+                return { scene: scene };
+            }
 
-			function createLavaScene() {
-				var scene = new THREE.Scene();
+            function createLavaScene() {
+                var scene = new THREE.Scene();
 
-				var uniforms = {
+                var uniforms = {
 
-					fogDensity: { type: "f", value: 0.99 },
-					fogColor: { type: "v3", value: new THREE.Vector3( 1, 1, 1 ) },
-					time: { type: "f", value: 1.0 },
-					resolution: { type: "v2", value: new THREE.Vector2() },
-					uvScale: { type: "v2", value: new THREE.Vector2( 3.0, 1.0 ) },
-					texture1: { type: "t", value: THREE.ImageUtils.loadTexture( "textures/lava/cloud.png" ) },
-					texture2: { type: "t", value: THREE.ImageUtils.loadTexture( "textures/t1.png" ) }
+                    fogDensity: { type: "f", value: 0.99 },
+                    fogColor: { type: "v3", value: new THREE.Vector3( 1, 1, 1 ) },
+                    time: { type: "f", value: 1.0 },
+                    resolution: { type: "v2", value: new THREE.Vector2() },
+                    uvScale: { type: "v2", value: new THREE.Vector2( 3.0, 1.0 ) },
+                    texture1: { type: "t", value: THREE.ImageUtils.loadTexture( "textures/lava/cloud.png" ) },
+                    texture2: { type: "t", value: THREE.ImageUtils.loadTexture( "textures/t1.png" ) }
 
-				};
+                };
 
-				uniforms.texture1.value.wrapS = uniforms.texture1.value.wrapT = THREE.RepeatWrapping;
-				uniforms.texture2.value.wrapS = uniforms.texture2.value.wrapT = THREE.RepeatWrapping;
+                uniforms.texture1.value.wrapS = uniforms.texture1.value.wrapT = THREE.RepeatWrapping;
+                uniforms.texture2.value.wrapS = uniforms.texture2.value.wrapT = THREE.RepeatWrapping;
 
-				var size = 0.65;
+                var size = 0.65;
 
-				var material = new THREE.ShaderMaterial( {
+                var material = new THREE.ShaderMaterial( {
 
-					uniforms: uniforms,
-					vertexShader: document.getElementById( 'vertexShader' ).textContent,
-					fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+                    uniforms: uniforms,
+                    vertexShader: document.getElementById( 'vertexShader' ).textContent,
+                    fragmentShader: document.getElementById( 'fragmentShader' ).textContent
 
-				} );
+                } );
 
-				var mesh = new THREE.Mesh( new THREE.TorusGeometry( size, 0.3, 30, 30 ), material );
-				mesh.rotation.x = 0.3;
-				scene.add( mesh );
+                var mesh = new THREE.Mesh( new THREE.TorusGeometry( size, 0.3, 30, 30 ), material );
+                mesh.rotation.x = 0.3;
+                scene.add( mesh );
 
-				return { scene: scene, uniforms: uniforms };
-			}
-
-
-
-			function onWindowResize( event ) {
-
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
-
-				renderer.setSize( window.innerWidth, window.innerHeight );
-
-			}
+                return { scene: scene, uniforms: uniforms };
+            }
 
 
-			function onDocumentMouseDown(event) {
 
-				mouseX = ( event.clientX - windowHalfX ) / ( windowHalfX * 2 );
-				mouseY = ( event.clientY - windowHalfY ) / ( windowHalfY * 2 );
-				if (event.button != 0 || event.ctrlKey) {
-					currentScene = ( ++ currentScene ) % sceneCtxs.length;
-				}
-			}
+            function onWindowResize( event ) {
 
-			function onDocumentMouseMove(event) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
 
-				if ( mouseX != 0 && mouseY != 0 ) {
-					zoomX = ( event.clientX - windowHalfX ) / ( windowHalfX * 2 ) - mouseX;
-					zoomY = ( event.clientY - windowHalfY ) / ( windowHalfY * 2 ) - mouseY;
-				}
+                renderer.setSize( window.innerWidth, window.innerHeight );
 
-			}
+            }
 
-			function onDocumentMouseUp(event) {
 
-				mouseX = 0;
-				mouseY = 0;
+            function onDocumentMouseDown(event) {
 
-			}
+                mouseX = ( event.clientX - windowHalfX ) / ( windowHalfX * 2 );
+                mouseY = ( event.clientY - windowHalfY ) / ( windowHalfY * 2 );
+                if (event.button != 0 || event.ctrlKey) {
+                    currentScene = ( ++ currentScene ) % sceneCtxs.length;
+                }
+            }
 
-			function animate() {
+            function onDocumentMouseMove(event) {
 
-				requestAnimationFrame( animate );
+                if ( mouseX != 0 && mouseY != 0 ) {
+                    zoomX = ( event.clientX - windowHalfX ) / ( windowHalfX * 2 ) - mouseX;
+                    zoomY = ( event.clientY - windowHalfY ) / ( windowHalfY * 2 ) - mouseY;
+                }
 
-				render();
-				stats.update();
+            }
 
-			}
+            function onDocumentMouseUp(event) {
 
-			function render() {
+                mouseX = 0;
+                mouseY = 0;
 
-				var sceneContext = sceneCtxs[ currentScene ];
-				var scene = sceneContext.scene;
-				var cb = sceneContext.callback;
-				var uniforms = sceneContext.uniforms;
+            }
 
-				cb( clock, scene, uniforms );
-				renderer.render( scene, camera );
+            function animate() {
 
-			}
+                requestAnimationFrame( animate );
 
-			function updatePieScene( clock, scene ) {
+                render();
+                stats.update();
 
-				var elapsed = clock.getElapsedTime();
-				var n = pieChart.children.length;
-				var pace = 4;
-				var lifted = Math.trunc( elapsed / pace ) % n;
-				if (elapsed < 32) {
-					lifted = -1;
-				}
+            }
 
-				for( var i = 0; i < n; i ++ ) {
-					var slice = pieChart.children[ i ];
-					var phase = elapsed % pace / pace;
-					var pieceWeight = slice.MYWG.model.alfa / Math.PI;
-					var lift = Math.sin( Math.pow( phase, 0.75 ) * Math.PI ) /
-						Math.pow( pieceWeight, 0.5 ) / 24;
-					var impact = 0.01 * ( 0.5 - Math.abs( 0.5 - phase ) );
-					//0.1 * ( 1 - Math.exp( - ( elapsed % pace / pace ) ) );
-					slice.MYWG.model.d.lift = 0.01 + ( i == lifted ? lift : impact );
-					slice.MYWG.update();
-					slice.children[ 1 ].position.z = ( i == lifted ? 0 : -1 );
-				}
+            function render() {
 
-				camera.position.x = 0 + zoomX + Math.sin( elapsed * 0.05 ) * 0.0;
-				camera.position.y = 0.1 - zoomY * 2;
-				camera.position.z = 1 + Math.abs( Math.sin( elapsed * 0.1 ) * 0.1 );
-				camera.lookAt( new THREE.Vector3( 0, 0.1, 0 ) );
-			}
+                var sceneContext = sceneCtxs[ currentScene ];
+                var scene = sceneContext.scene;
+                var cb = sceneContext.callback;
+                var uniforms = sceneContext.uniforms;
 
-			function updateBar3Scene( clock, scene ) {
-				
-			}
+                cb( clock, scene, uniforms );
+                renderer.render( scene, camera );
 
-			function updateScene1(clock, scene, uniforms) {
+            }
 
-				var delta = clock.getDelta();
-				var elapsed = clock.getElapsedTime();
+            function updatePieScene( clock, scene ) {
 
-				if (uniforms) {
-					uniforms.time.value += 0.2 * delta;
-				}
+                var elapsed = clock.getElapsedTime();
+                var n = pieChart.children.length;
+                var pace = 4;
+                var lifted = Math.trunc( elapsed / pace ) % n;
+                if (elapsed < 32) {
+                    lifted = -1;
+                }
 
-				for ( var i = 0; i < scene.children.length; i ++ ) {
+                for( var i = 0; i < n; i ++ ) {
+                    var slice = pieChart.children[ i ];
+                    var phase = elapsed % pace / pace;
+                    var pieceWeight = slice.MYWG.model.alfa / Math.PI;
+                    var lift = Math.sin( Math.pow( phase, 0.75 ) * Math.PI ) /
+                        Math.pow( pieceWeight, 0.5 ) / 24;
+                    var impact = 0.01 * ( 0.5 - Math.abs( 0.5 - phase ) );
+                    //0.1 * ( 1 - Math.exp( - ( elapsed % pace / pace ) ) );
+                    slice.MYWG.model.d.lift = 0.01 + ( i == lifted ? lift : impact );
+                    slice.MYWG.update();
+                    slice.children[ 1 ].position.z = ( i == lifted ? 0 : -1 );
+                }
 
-					var object = scene.children[ i ];
+                camera.position.x = 0 + zoomX + Math.sin( elapsed * 0.05 ) * 0.0;
+                camera.position.y = 0.1 - zoomY * 2;
+                camera.position.z = 1 + Math.abs( Math.sin( elapsed * 0.1 ) * 0.1 );
+                camera.lookAt( new THREE.Vector3( 0, 0.1, 0 ) );
+            }
 
-					object.rotation.x = Math.sin( elapsed * 0.25 ) * Math.PI / 8.0;
-					object.rotation.y = zoomX * 2 + Math.sin( elapsed * 0.1 ) * Math.PI / 8.0;
-				}
+            function updateBar3Scene( clock, scene ) {
+                
+            }
 
-				camera.position.z = 1 + zoomY * 2;
+            function updateScene1(clock, scene, uniforms) {
 
-				var vec = new THREE.Vector3( mouseX, mouseY, 0 );
-				var raycaster = new THREE.Raycaster( camera.position, 
-					vec.sub( camera.position ).normalize(), 0, 4 );
-				var hits = raycaster.intersectObject( scene, true );
-				for( i = 0; i < hits.length; i ++ ) {
-					var hit = hits[ i ];
-					if ( MYWG.isWrapped( hit.object ) ) {
-						var val = MYWG.wrappedValue( hit.object );
-					}
-				}
-			}
+                var delta = clock.getDelta();
+                var elapsed = clock.getElapsedTime();
 
-		</script>
+                if (uniforms) {
+                    uniforms.time.value += 0.2 * delta;
+                }
 
-	</body>
+                for ( var i = 0; i < scene.children.length; i ++ ) {
+
+                    var object = scene.children[ i ];
+
+                    object.rotation.x = Math.sin( elapsed * 0.25 ) * Math.PI / 8.0;
+                    object.rotation.y = zoomX * 2 + Math.sin( elapsed * 0.1 ) * Math.PI / 8.0;
+                }
+
+                camera.position.z = 1 + zoomY * 2;
+
+                var vec = new THREE.Vector3( mouseX, mouseY, 0 );
+                var raycaster = new THREE.Raycaster( camera.position, 
+                    vec.sub( camera.position ).normalize(), 0, 4 );
+                var hits = raycaster.intersectObject( scene, true );
+                for( i = 0; i < hits.length; i ++ ) {
+                    var hit = hits[ i ];
+                    if ( MYWG.isWrapped( hit.object ) ) {
+                        var val = MYWG.wrappedValue( hit.object );
+                    }
+                }
+            }
+
+        </script>
+
+    </body>
 </html>
