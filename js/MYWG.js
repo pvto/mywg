@@ -12,6 +12,19 @@
 */
 window.MYWG = (function() {
 
+    var coalesce = function( a, b, c, d, e, f, g, h, i, j ) {
+        if (a !== undefined) { return a; }
+        if (b !== undefined) { return b; }
+        if (c !== undefined) { return c; }
+        if (d !== undefined) { return d; }
+        if (e !== undefined) { return e; }
+        if (f !== undefined) { return f; }
+        if (g !== undefined) { return g; }
+        if (h !== undefined) { return h; }
+        if (i !== undefined) { return i; }
+        return j;
+    };
+
     var isWrapped = function( obj ) {
         return _.isObject( obj ) && _.isObject( obj.MYWG_data );
     };
@@ -26,7 +39,8 @@ window.MYWG = (function() {
     var wrap = function( obj, withValue ) {
         obj.MYWG_data = withValue;
     };
-
+    wrap.test = wrap.isWrapped = isWrapped;
+    wrap.get = wrap.wrappedValue = wrappedValue;
 
 
     var rdecim = function( decim, precision ) {
@@ -81,7 +95,7 @@ window.MYWG = (function() {
                 for( var i = 0; i <= n; i ++ ) {
                     ret.push( { ind : i, 
                                 x : x, 
-                                level: ( ( x % scl == 0 || i == n ) ? 0 : 1 ) } );
+                                level: ( ( x % scl <= 1e-6 || i == n ) ? 0 : 1 ) } );
                     x += ticks.scale / level;
                 }
                 return ret;
@@ -96,13 +110,14 @@ window.MYWG = (function() {
         createLine : function( xrange, yrange, x, coord, margin, material ) {
 
             var geometry = new THREE.Geometry();
-            for(var j = 0; j < 2; j++) {
-                var xx = ( coord=='x' ? xrange : yrange).normx( x, margin );
-                var drange = ( coord=='x' ? yrange : xrange );
-                var y = drange.normx( j == 0 ? drange.ticks.start : drange.ticks.end, margin );
-                var pos = ( coord=='x' ? new THREE.Vector3( xx, y ) : new THREE.Vector3( y, xx ) );
-                geometry.vertices.push( pos );
-            }
+            var xx = ( coord=='x' ? xrange : yrange).normx( x, margin );
+            var drange = ( coord=='x' ? yrange : xrange );
+            var y = drange.normx( drange.ticks.start, margin );
+            var pos = ( coord=='x' ? new THREE.Vector3( xx, y ) : new THREE.Vector3( y, xx ) );
+            geometry.vertices.push( pos );
+            var y = drange.normx( drange.ticks.end, margin );
+            var pos = ( coord=='x' ? new THREE.Vector3( xx, y ) : new THREE.Vector3( y, xx ) );
+            geometry.vertices.push( pos );
             var line = new THREE.Line( geometry, material );
             return line;
         },
@@ -116,14 +131,17 @@ window.MYWG = (function() {
             var yticks = yRange.tickList( levely );
             var ret = [];
             var i = 0;
+            var makeText = function( tick, xalign ) {
+                var textMaterial = new THREE.MeshLambertMaterial( { color: 0x404040 } );
+                var rounded = rdecim( tick.x, 100 );
+                return makeHeader1( "" + rounded, { xalign: xalign, size: 0.01 }, textMaterial );
+            }
             _.forEach( xticks, function( tick ) {
                 var line = CoordinateUtil.createLine( xRange, yRange, tick.x, 'x', margin, 
                         material );
                 ret.push( line );
-                if (tick.level == 0 || i == yticks.length - 1) {
-                    var textMaterial = new THREE.MeshLambertMaterial( { color: 0x404040 } );
-                    var rounded = rdecim( tick.x, 100 );
-                    var text = makeHeader1( "" + rounded, { xalign: 0, size: 0.01 }, textMaterial );
+                if (tick.level == 0 || i == xticks.length - 1) {
+                    var text = makeText( tick, 0 );
                     text.position.x += xRange.normx( tick.x, margin );
                     text.position.y += yRange.normx( yRange.ticks.start, margin ) - 0.01;
                     ret.push( text );
@@ -136,9 +154,7 @@ window.MYWG = (function() {
                         material );
                 ret.push( line );
                 if (tick.level == 0 || i == yticks.length - 1) {
-                    var textMaterial = new THREE.MeshLambertMaterial( { color: 0x404040 } );
-                    var rounded = rdecim( tick.x, 100 );
-                    var text = makeHeader1( "" + rounded, { xalign: -1, size: 0.01 }, textMaterial );
+                    var text = makeText( tick, -1 );
                     text.position.y += yRange.normx( tick.x, margin );
                     text.position.x += xRange.normx( xRange.ticks.start, margin ) - 0.01;
                     ret.push( text );
@@ -324,8 +340,7 @@ window.MYWG = (function() {
     };
 
     return {
-        isWrapped: isWrapped,
-        wrappedValue: wrappedValue,
+        coalesce: coalesce,
         wrap: wrap,
         range: range,
         CoordinateUtil: CoordinateUtil,

@@ -138,15 +138,28 @@
 
                 var pie = createPieScene(),
                     hist = createHistogramScene(),
-                    scat = createScatterScene(),
-                    bar3 = createBar3Scene(),
+                    scat = createScatterScene( { datacount: 1000 } ),
+                    bar3 = createBar3Scene( {} ),
+//                    bar3b = createBar3Scene( { datasize: 64 * 64, margin: 0.2, 
+//                            h: [ "12 * ( 2 + 8 * 2 ) * 64^2 = 884736 osasta", "+ klippaukset..." ]
+//                        } 
+//                    ),
+                    bar3c = createBar3Scene( { datasize: 64 * 64, margin: 0.2, 
+                            rsegs: 6, hsegs: 1, 
+                            h: [ "6 * ( 2 + 2 * 2 ) * 64^2 = 147456 osasta", "+ klippaukset..." ]
+                        } 
+                    ),
+                    scat2 = createScatterScene( { datacount: 20000, geom: new THREE.PlaneGeometry( 0.005, 0.005, 1, 1 ), coord: 0 } ),
                     lava = createLavaScene()
                     ;
                 sceneCtxs = [ 
-                    { scene: bar3.scene, uniforms: bar3.uniforms, callback: updateBar3Scene }, 
                     { scene: pie.scene, uniforms: pie.uniforms, callback: updatePieScene }, 
                     { scene: hist.scene, uniforms: hist.uniforms, callback: updatePieScene },
+                    { scene: bar3.scene, uniforms: bar3.uniforms, callback: updateBar3Scene }, 
                     { scene: scat.scene, uniforms: scat.uniforms, callback: updateScene1 },
+                    { scene: bar3c.scene, uniforms: bar3c.uniforms, callback: updateBar3Scene }, 
+                    { scene: scat2.scene, uniforms: scat2.uniforms, callback: updateScene1 },
+//                    { scene: bar3b.scene, uniforms: bar3b.uniforms, callback: updateBar3Scene },
                     { scene: lava.scene, uniforms: lava.uniforms, callback: updateScene1 }
                 ];
 
@@ -236,8 +249,15 @@
                 return { scene: scene };
             }
 
+            function addCoordinates( groupTo, xRange, yRange, margin, coordFreq ) {
+                var lineMaterial = new THREE.LineBasicMaterial( { color: 0x808080, opacity: 0.5 } );
+                _.forEach( MYWG.CoordinateUtil.createXyCoordinateLines(xRange, yRange, margin, coordFreq, coordFreq, lineMaterial), function(line) {
+                        groupTo.add(line);
+                    }
+                );
+            }
 
-            function createScatterScene() {
+            function createScatterScene( params ) {
 
                 var data = [
                     { t: 0.0, val: 0.1, color: 0xff0000 },
@@ -247,7 +267,7 @@
                     { t: 0.4, val: 0.4, color: 0xff0000 },
                     { t: 0.5, val: 0.5, color: 0xff0000 }
                 ];
-                var dataCount = 1000;
+                var dataCount = params.datacount || 1000;
 
                 var rndc = function(extent) { return Math.floor( Math.random() * extent + ( 255 - extent ) ); }
                 for( var i = data.length; i < dataCount; i ++ ) {
@@ -255,55 +275,57 @@
                     data.push( {
                         t: i / dataCount + Math.random(), 
                         val: val,
-                        color: rndc( 128 * val ) * 256 * 256 + rndc( 128 ) * 256 + rndc( 128 )
+                        color: rndc( 255 )
                     } );
                 }
-
-                var scene = new THREE.Scene();
-
-                var light = createSpotlight();
-                scene.add( light );
-
-                var bsize = 0.005;
-                var geometry = new THREE.BoxGeometry( bsize, bsize, bsize );
-
-                var group = new THREE.Object3D();
-                group.position.set( 0, 0, 0 );
-                scene.add( group );
-
 
                 var margin = 0.1;
                 var xRange = MYWG.range( data, function(x) { return x.t; } );
                 var yRange = MYWG.range( data, function(x) { return x.val; } );
 
+                data = _.map( data, function( d ) {
+                    d.yRange = yRange;
+                    d.xRange = xRange;
+                    d.update = function( elem ) {
+                        elem.position.x = xRange.normx( d.t, margin );
+                        elem.position.y = yRange.normx( d.val, margin );
+                    };
+                    return d;
+                } );
+
+                var bsize = 0.005;
+                var geometry = params.geom || new THREE.BoxGeometry( bsize, bsize, bsize );
+
+
+                var scene = new THREE.Scene();
+                var group = new THREE.Object3D();
+                scene.add( group );
+
                 for( var i = 0; i < data.length; i ++ ) {
-                    var d = data[i];
-                    var material = new THREE.MeshPhongMaterial( { ambient: 0x20a0a0, color: d.color, specular: 0x555555, shininess: 10 } );
+                    var d = data[ i ];
+                    var material = new THREE.MeshPhongMaterial( { ambient: 0x20a0a0, color: d.color, specular: 0x555555, shininess: 1 } );
                     var mesh = new THREE.Mesh( geometry, material );
-                    mesh.position.x = xRange.normx(d.t, margin);
-                    mesh.position.y = yRange.normx(d.val, margin);
-                    mesh.position.z = 0;
-                    mesh.castShadow = false;
-                    mesh.MYWG_model = d;
+                    MYWG.wrap( mesh, d );
+                    d.update( mesh );
                     group.add( mesh );
                 }
 
 
                 // bg "screen" plane
-                var geometry = new THREE.PlaneGeometry( 2, 2, 32, 32 );
-                var material = new THREE.MeshLambertMaterial( { color: 0xf0f0f0, side: THREE.DoubleSide } );
+                var geometry = new THREE.PlaneGeometry( 4, 4, 32, 32 );
+                var material = new THREE.MeshLambertMaterial( { color: 0xffffff, side: THREE.DoubleSide } );
                 var plane = new THREE.Mesh( geometry, material );
                 plane.position.z = -0.1;
                 plane.castShadow = false;
                 plane.receiveShadow = false;
                 scene.add( plane );
 
+                var coordFreq = MYWG.coalesce( params.coord, 1 );
+                addCoordinates( group, xRange, yRange, margin, coordFreq );
 
-                var lineMaterial = new THREE.LineBasicMaterial( { color: 0x808080, opacity: 0.5 } );
-                _.forEach( MYWG.CoordinateUtil.createXyCoordinateLines(xRange, yRange, margin, 1, 1, lineMaterial), function(line) {
-                        group.add(line);
-                    }
-                );
+                var light = createSpotlight();
+                scene.add( light );
+
 
                 return { scene: scene };
             }
@@ -405,21 +427,29 @@
                 return { scene: scene };
             }
 
-            function createBar3Scene() {
+
+            function createBar3Scene( params ) {
+
+                var datasize = params.datasize || 36,
+                    margin = params.margin || 0.3,
+                    rsegs = params.rsegs || 12,
+                    hsegs = params.hsegs || 8,
+                    cylinderR = params.r || 1,
+                    initialXrot = params.xrot || Math.PI / 4
+                    ;
 
                 var data = [
                     { x: 1, z: 1, h: 0 },    // start at zero for normalizing sizes
                 ];
-                var datasize = 256;
+
                 for( var i = data.length; i < datasize; i++ ) {
                     data.push( { 
                         x: i % Math.sqrt( datasize ),
-                        z: i / Math.sqrt( datasize ),
+                        z: Math.floor( i / Math.sqrt( datasize ) ),
                         h: Math.random() * 8
                     } );
                 }
 
-                var margin = 0.3;
                 var X = function( d ) { return d.x; },
                     Z = function( d ) { return d.z; },
                     H = function( d ) { return d.h; }
@@ -435,7 +465,7 @@
                 var scene = new THREE.Scene();
                 var group = new THREE.Object3D();
                 scene.add( group );
-                group.rotation.x = Math.PI / 4;
+                group.rotation.x = initialXrot;
 
                 for( var i = 0; i < data.length; i ++ ) {
 
@@ -445,12 +475,11 @@
                         h = Math.abs( hrange.normx( H( d ), margin ) )
                         ;
                     var boxsize = ( 1 - margin * 2 ) / Math.max( 1 + xrange.magnitude, 1 + zrange.magnitude );
-                    var cylindersize = boxsize / Math.sqrt( 2 );
-                    var geometry = new THREE.CylinderGeometry ( cylindersize, cylindersize, h, 12, 8, false );
+                    var cylindersize = boxsize / Math.sqrt( 2 ) * cylinderR;
+                    var geometry = new THREE.CylinderGeometry ( cylindersize, cylindersize, h, rsegs, hsegs, false );
 
                     var material = new THREE.MeshLambertMaterial( { color: ccomp( H( d ) / hmax ) } );
-                        //new THREE.MeshPhongMaterial( { ambient: 0x20a0a0, 
-                        //color: ccomp( sh1 / hmax), specular: 0x555555, shininess: 10 } );
+
                     var mesh = new THREE.Mesh( geometry, material );
                     mesh.position.x = dx;
                     mesh.position.y = 0 + ( h / 2 );
@@ -463,6 +492,13 @@
 
                 }
 
+                var cgroup = new THREE.Object3D();
+                xrange.ticks.start -= xrange.ticks.scale;
+                zrange.ticks.start -= zrange.ticks.scale;
+                addCoordinates( cgroup, xrange, zrange, margin, 0, margin );
+                cgroup.rotation.x = - Math.PI / 2;
+                group.add( cgroup );
+
                 // bg "screen" plane
                 var geometry = new THREE.PlaneGeometry( 8, 8, 32, 32 );
                 var material = new THREE.MeshLambertMaterial( { color: 0xf0f0f0, side: THREE.DoubleSide } );
@@ -471,6 +507,14 @@
                 plane.castShadow = false;
                 plane.receiveShadow = true;
                 scene.add( plane );
+
+                var headers = params.h || [];
+                for( var i = 0; i < headers.length; i ++ ) {
+                    var text = MYWG.makeHeader( headers[ i ], { size: 0.035 }, 
+                        new THREE.MeshLambertMaterial( { color: 0x000000 } ) );
+                    text.position.y += 0.5 - i * 0.2;
+                    scene.add( text );
+                }
 
                 scene.add( createSpotlight() );
 
@@ -600,7 +644,14 @@
             }
 
             function updateBar3Scene( clock, scene ) {
-                
+
+                var elapsed = clock.getElapsedTime();
+
+                camera.position.x = 0 + zoomX + Math.sin( elapsed * 0.05 ) * 0.0;
+                camera.position.y = 0.1 - zoomY * 2;
+                camera.position.z = 1 + Math.abs( Math.sin( elapsed * 0.1 ) * 0.1 );
+                camera.lookAt( new THREE.Vector3( 0, 0.1, 0 ) );
+
             }
 
             function updateScene1(clock, scene, uniforms) {
@@ -612,26 +663,35 @@
                     uniforms.time.value += 0.2 * delta;
                 }
 
-                for ( var i = 0; i < scene.children.length; i ++ ) {
-
-                    var object = scene.children[ i ];
-
-                    object.rotation.x = Math.sin( elapsed * 0.25 ) * Math.PI / 8.0;
-                    object.rotation.y = zoomX * 2 + Math.sin( elapsed * 0.1 ) * Math.PI / 8.0;
-                }
-
-                camera.position.z = 1 + zoomY * 2;
-
-                var vec = new THREE.Vector3( mouseX, mouseY, 0 );
-                var raycaster = new THREE.Raycaster( camera.position, 
-                    vec.sub( camera.position ).normalize(), 0, 4 );
-                var hits = raycaster.intersectObject( scene, true );
-                for( i = 0; i < hits.length; i ++ ) {
-                    var hit = hits[ i ];
-                    if ( MYWG.isWrapped( hit.object ) ) {
-                        var val = MYWG.wrappedValue( hit.object );
+                var g = scene.children[ 0 ];
+                _.forEach( g.children, function( elem, ind ) {
+                    if ( MYWG.wrap.test( elem ) ) {
+                        var d = MYWG.wrap.get( elem );
+                        if (elapsed * 0.1 % 2 < 0.1) {
+                            d.targetVal = d.yRange.min + Math.random() * d.yRange.magnitude;
+                        } else {
+                            if (d.targetVal !== undefined) {
+                                d.val = d.val + ( d.targetVal - d.val ) * 0.01;
+                                d.update( elem );
+                            }
+                        }
                     }
-                }
+                } );
+                camera.position.x = 0;
+                camera.position.y = 0;
+                camera.position.z = 1 + zoomY * 2;
+                camera.lookAt( new THREE.Vector3( 0, 0, 0 ) );
+
+//                var vec = new THREE.Vector3( mouseX, mouseY, 0 );
+//                var raycaster = new THREE.Raycaster( camera.position, 
+//                    vec.sub( camera.position ).normalize(), 0, 4 );
+//                var hits = raycaster.intersectObject( scene, true );
+//                for( i = 0; i < hits.length; i ++ ) {
+//                    var hit = hits[ i ];
+//                    if ( MYWG.wrap.isWrapped( hit.object ) ) {
+//                        var val = MYWG.wrap.get( hit.object );
+//                    }
+//                }
             }
 
         </script>
