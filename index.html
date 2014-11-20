@@ -116,7 +116,7 @@
 
             var clock = new THREE.Clock();
 
-            var mouseX = 0, mouseY = 0,
+            var mouse = { x: 0, y: 0 },
                 zoomX = 0, zoomY = 0;
 
             var windowHalfX = window.innerWidth / 2;
@@ -570,8 +570,8 @@
 
             function onDocumentMouseDown(event) {
 
-                mouseX = ( event.clientX - windowHalfX ) / ( windowHalfX * 2 );
-                mouseY = ( event.clientY - windowHalfY ) / ( windowHalfY * 2 );
+                mouse.x = ( event.clientX - windowHalfX ) / ( windowHalfX * 2 );
+                mouse.y = ( event.clientY - windowHalfY ) / ( windowHalfY * 2 );
                 if (event.button != 0 || event.ctrlKey) {
                     currentScene = ( ++ currentScene ) % sceneCtxs.length;
                 }
@@ -579,17 +579,20 @@
 
             function onDocumentMouseMove(event) {
 
-                if ( mouseX != 0 && mouseY != 0 ) {
-                    zoomX = ( event.clientX - windowHalfX ) / ( windowHalfX * 2 ) - mouseX;
-                    zoomY = ( event.clientY - windowHalfY ) / ( windowHalfY * 2 ) - mouseY;
+                mouse.curx = ( event.clientX - windowHalfX ) / ( windowHalfX * 2 );
+                mouse.cury = ( event.clientY - windowHalfY ) / ( windowHalfY * 2 ) 
+
+                if ( mouse.x != 0 && mouse.y != 0 ) {
+                    zoomX = ( event.clientX - windowHalfX ) / ( windowHalfX * 2 ) - mouse.x;
+                    zoomY = ( event.clientY - windowHalfY ) / ( windowHalfY * 2 ) - mouse.y;
                 }
 
             }
 
             function onDocumentMouseUp(event) {
 
-                mouseX = 0;
-                mouseY = 0;
+                mouse.x = 0;
+                mouse.y = 0;
 
             }
 
@@ -682,14 +685,16 @@
                 camera.position.z = 1 + zoomY * 2;
                 camera.lookAt( new THREE.Vector3( 0, 0, 0 ) );
 
-//                var vec = new THREE.Vector3( mouseX, mouseY, 0 );
-//                var raycaster = new THREE.Raycaster( camera.position, 
-//                    vec.sub( camera.position ).normalize(), 0, 4 );
-//                var hits = raycaster.intersectObject( scene, true );
-//                for( i = 0; i < hits.length; i ++ ) {
-//                    var hit = hits[ i ];
-//                    if ( MYWG.wrap.isWrapped( hit.object ) ) {
-//                        var val = MYWG.wrap.get( hit.object );
+//                if (mouse.curx !== undefined) {
+//                    var vec = new THREE.Vector3( mouse.curx, mouse.cury, 0 );
+//                    var raycaster = new THREE.Raycaster( vec.add( camera.position ), 
+//                        new THREE.Vector3( 0, 0, 0 ), 0, 4 );
+//                    var hits = raycaster.intersectObject( scene, true );
+//                    for( var i = 0; i < hits.length; i ++ ) {
+//                        var hit = hits[ i ];
+//                        if ( MYWG.wrap.isWrapped( hit.object ) ) {
+//                            var val = MYWG.wrap.get( hit.object );
+//                        }
 //                    }
 //                }
             }
