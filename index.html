@@ -150,9 +150,10 @@
                         } 
                     ),
                     scat2 = createScatterScene( { datacount: 20000, geom: new THREE.PlaneGeometry( 0.005, 0.005, 1, 1 ), coord: 0 } ),
-                    lava = createLavaScene()
+                    kiitos = createKiitosScene()
                     ;
                 sceneCtxs = [ 
+                    { scene: kiitos.scene, uniforms: kiitos.uniforms, callback: updateKiitos },
                     { scene: pie.scene, uniforms: pie.uniforms, callback: updatePieScene }, 
                     { scene: hist.scene, uniforms: hist.uniforms, callback: updatePieScene },
                     { scene: bar3.scene, uniforms: bar3.uniforms, callback: updateBar3Scene }, 
@@ -160,7 +161,7 @@
                     { scene: bar3c.scene, uniforms: bar3c.uniforms, callback: updateBar3Scene }, 
                     { scene: scat2.scene, uniforms: scat2.uniforms, callback: updateScene1 },
 //                    { scene: bar3b.scene, uniforms: bar3b.uniforms, callback: updateBar3Scene },
-                    { scene: lava.scene, uniforms: lava.uniforms, callback: updateScene1 }
+                    
                 ];
 
                 renderer = new THREE.WebGLRenderer();
@@ -521,7 +522,7 @@
                 return { scene: scene };
             }
 
-            function createLavaScene() {
+            function createKiitosScene() {
                 var scene = new THREE.Scene();
 
                 var uniforms = {
@@ -549,9 +550,28 @@
 
                 } );
 
-                var mesh = new THREE.Mesh( new THREE.TorusGeometry( size, 0.3, 30, 30 ), material );
+                var mesh = MYWG.makeHeader( "KIITOS", { size: 0.17 }, material ); 
+                    //new THREE.Mesh( new THREE.TorusGeometry( size, 0.3, 30, 30 ), material );
                 mesh.rotation.x = 0.3;
                 scene.add( mesh );
+
+                var material2 = new THREE.MeshBasicMaterial( { color: 0xffffff});
+                var tm = MYWG.makeHeader( ":)===", { size: 0.05 }, material ); 
+                tm.position.y = 2;
+                tm.rotation.z = 6;
+
+                var animops = {
+                    transform: { 
+                        y: -0.2,
+                        z: 0.3,
+                        rotz: 0,
+                        delay: 2, 
+                        dur: 6, 
+                        slope: MYWG.slopes.sin
+                    }
+                };
+                MYWG.wrap( tm, animops );
+                scene.add( tm );
 
                 return { scene: scene, uniforms: uniforms };
             }
@@ -629,14 +649,15 @@
 
                 for( var i = 0; i < n; i ++ ) {
                     var slice = pieChart.children[ i ];
+                    var userData = MYWG.wrap.get( slice );
                     var phase = elapsed % pace / pace;
-                    var pieceWeight = slice.MYWG.model.alfa / Math.PI;
+                    var pieceWeight = userData.model.alfa / Math.PI;
                     var lift = Math.sin( Math.pow( phase, 0.75 ) * Math.PI ) /
                         Math.pow( pieceWeight, 0.5 ) / 24;
                     var impact = 0.01 * ( 0.5 - Math.abs( 0.5 - phase ) );
                     //0.1 * ( 1 - Math.exp( - ( elapsed % pace / pace ) ) );
-                    slice.MYWG.model.d.lift = 0.01 + ( i == lifted ? lift : impact );
-                    slice.MYWG.update();
+                    userData.model.d.lift = 0.01 + ( i == lifted ? lift : impact );
+                    userData.update();
                     slice.children[ 1 ].position.z = ( i == lifted ? 0 : -1 );
                 }
 
@@ -657,7 +678,7 @@
 
             }
 
-            function updateScene1(clock, scene, uniforms) {
+            function updateScene1( clock, scene, uniforms ) {
 
                 var delta = clock.getDelta();
                 var elapsed = clock.getElapsedTime();
@@ -697,6 +718,23 @@
 //                        }
 //                    }
 //                }
+            }
+
+            function updateKiitos( clock, scene, uniforms ) {
+
+                updateBar3Scene( clock, scene );
+
+                var delta = clock.getDelta();
+
+                if (uniforms) {
+                    uniforms.time.value += 0.2 * delta;
+                }
+
+                _.forEach( scene.children, function( elem, ind ) {
+
+                    MYWG.animate( elem );
+                } );
+
             }
 
         </script>

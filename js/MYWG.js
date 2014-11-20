@@ -318,11 +318,11 @@ window.MYWG = (function() {
 
                 update( model );
 
-                pieGroup.MYWG = {
+                MYWG.wrap( pieGroup, {
                     model: model,
                     update: update,
                     create: create
-                };
+                } );
                 return pieGroup;
             }
             return create( model );
@@ -334,9 +334,66 @@ window.MYWG = (function() {
             var slice = createSlice( d, i );
             group.add( slice );
 
-            startAngle += slice.MYWG.model.alfa;
+            startAngle += MYWG.wrap.get( slice ).model.alfa;
         }
         return group;
+    };
+
+    function animate( elem ) {
+
+        if ( isWrapped( elem ) ) {
+
+            var animops = wrappedValue( elem );
+            var tr = animops.transform;
+            if ( tr !== undefined ) {
+
+                if ( tr.startTime === undefined ) {
+
+                    tr.startTime = clock.getElapsedTime();
+
+                    var pos = new THREE.Vector3(),
+                        rot = new THREE.Vector3()
+                        ;
+                    pos.copy( elem.position );
+                    rot.copy( elem.rotation );
+                    
+                    tr.MYWG_orig = { 
+                        position: pos, 
+                        rotation: rot
+                    };
+                }
+
+                var delay = tr.delay || 0,
+                    elapsed = clock.getElapsedTime() - tr.startTime - delay
+                    ;
+                if ( ! tr.stopped && elapsed >= 0 ) {
+
+                    var t = Math.min( 1, elapsed / tr.dur );
+                    tr.stopped = ( t >= 1 );
+
+                    if ( tr.x != undefined ) {
+                        elem.position.x = tr.slope( t, tr.MYWG_orig.position.x, tr.x );
+                    }                    
+                    if ( tr.y != undefined ) {
+                        elem.position.y = tr.slope( t, tr.MYWG_orig.position.y, tr.y );
+                    }
+                    if ( tr.z != undefined ) {
+                        elem.position.z = tr.slope( t, tr.MYWG_orig.position.z, tr.z );
+                    }
+                    if ( tr.rotx != undefined ) {
+                        elem.rotation.x = tr.slope( t, tr.MYWG_orig.rotation.x, tr.rotx );
+                    }                    
+                    if ( tr.roty != undefined ) {
+                        elem.rotation.y = tr.slope( t, tr.MYWG_orig.rotation.y, tr.roty );
+                    }
+                    if ( tr.rotz != undefined ) {
+                        elem.rotation.z = tr.slope( t, tr.MYWG_orig.rotation.z, tr.rotz );
+                    }
+                    //similarly, other elements
+
+                }
+            }
+        }
     };
 
     return {
@@ -346,7 +403,19 @@ window.MYWG = (function() {
         CoordinateUtil: CoordinateUtil,
         makeHeader: makeHeader1,
         makeHistogram: makeHistogram,
-        makePieChart: makePieChart
+        makePieChart: makePieChart,
+        animate: animate,
+        slopes: {
+            lin: function( t, start, end ) { 
+                return start + t * ( end - start );
+            },
+            sin: function( t, start, end ) { 
+                return start + Math.sin( t * Math.PI / 2 ) * ( end - start );
+            },
+            cube: function( t, start, end ) { 
+                return start + t * t * t * ( end - start );
+            }
+        }
     };
 
 })();
