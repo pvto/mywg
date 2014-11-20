@@ -730,10 +730,7 @@
                     uniforms.time.value += 0.2 * delta;
                 }
 
-                _.forEach( scene.children, function( elem, ind ) {
-
-                    MYWG.animate( elem );
-                } );
+                MYWG.animate( scene );
 
             }
 

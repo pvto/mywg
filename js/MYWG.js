@@ -339,7 +339,8 @@ window.MYWG = (function() {
         return group;
     };
 
-    function animate( elem ) {
+
+    function animate( elem, recursively ) {
 
         if ( isWrapped( elem ) ) {
 
@@ -393,6 +394,10 @@ window.MYWG = (function() {
 
                 }
             }
+        }
+
+        if ( elem != undefined && ( recursively || recursively === undefined ) ) {
+            _.forEach( elem.children, animate );
         }
     };
 
